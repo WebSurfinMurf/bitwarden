@@ -1,0 +1,6 @@
+# Bitwarden data directory
+data/
+
+# Backups
+*.tar.gz
+*.zip

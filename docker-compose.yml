@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  bitwarden:
+    image: vaultwarden/server:latest
+    container_name: bitwarden
+    restart: unless-stopped
+    env_file:
+      - $HOME/projects/secrets/bitwarden.env
+    environment:
+      DOMAIN: ${DOMAIN:-https://bitwarden.ai-servicers.com}
+      SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED:-true}
+      INVITATIONS_ALLOWED: ${INVITATIONS_ALLOWED:-true}
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
+      WEBSOCKET_ENABLED: true
+    volumes:
+      - /home/administrator/projects/data/bitwarden:/data
+    networks:
+      traefik-net:
+        ipv4_address: 172.25.0.12
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bitwarden.rule=Host(`bitwarden.ai-servicers.com`)"
+      - "traefik.http.routers.bitwarden.entrypoints=websecure"
+      - "traefik.http.routers.bitwarden.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.bitwarden.service=bitwarden"
+      - "traefik.http.services.bitwarden.loadbalancer.server.port=80"
+      # WebSocket support
+      - "traefik.http.routers.bitwarden-ws.rule=Host(`bitwarden.ai-servicers.com`) && Path(`/notifications/hub`)"
+      - "traefik.http.routers.bitwarden-ws.entrypoints=websecure"
+      - "traefik.http.routers.bitwarden-ws.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.bitwarden-ws.service=bitwarden-ws"
+      - "traefik.http.services.bitwarden-ws.loadbalancer.server.port=3012"
+
+networks:
+  traefik-net:
+    external: true
