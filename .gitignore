@@ -4,3 +4,12 @@ data/
 # Backups
 *.tar.gz
 *.zip
+
+# Secrets (added 2025-11-10)
+*.env
+.env
+secrets/
+*.secret
+*.key
+*.pem
+.credentials.json
