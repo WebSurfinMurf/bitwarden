@@ -23,7 +23,7 @@ Self-hosted password manager using Vaultwarden (lightweight Bitwarden-compatible
 - Volume: `/home/administrator/projects/data/bitwarden`
 
 ## Secrets
-Location: `$HOME/secrets/bitwarden.env`
+Location: `$HOME/projects/secrets/bitwarden.env`
 - ADMIN_TOKEN (for /admin access)
 - DOMAIN
 
