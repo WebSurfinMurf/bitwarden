@@ -5,13 +5,15 @@
 # "decryption operation failed" crypto error.
 #
 # Usage:
-#   ./scripts/test-bw-roundtrip.sh                 # masks the retrieved password
-#   ./scripts/test-bw-roundtrip.sh reveal          # prints the actual password
+#   ./scripts/test-bw-roundtrip.sh                                  # default item, masks the password
+#   ./scripts/test-bw-roundtrip.sh reveal                           # default item, prints the password
+#   ITEM=ib-gateway-live-vnc ./scripts/test-bw-roundtrip.sh         # different item, masked
+#   ITEM=ib-gateway-live-vnc ./scripts/test-bw-roundtrip.sh reveal  # different item, revealed
 #
 # Nothing is written to disk or shell history. Run as the administrator user.
 set -u
 
-ITEM="ib-gateway-live"
+ITEM="${ITEM:-ib-gateway-live}"
 REVEAL="${1:-}"
 export PATH="$HOME/.local/bin:$PATH"
 
