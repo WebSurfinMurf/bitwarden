@@ -57,8 +57,14 @@ updated Task 1 in `admin-cli-integration.md`); the upgrade below ran through tha
 - `curl /api/version` → `"1.36.0"`
 - `bw status` → server URL correct, `unauthenticated` (expected — no master password yet)
 - `bw login --help` → runs (CLI wired up)
-- Full `bw login`/`unlock`/`get` not possible without your master password — that's the
-  end-to-end step for you to run after registering (see "What to test").
+- **Full end-to-end round-trip VERIFIED (2026-06-02):** `bw login` →
+  `bw unlock` → `bw sync` → `bw get password "ib-gateway-live"` returns the live
+  credential on this host. KDF is PBKDF2-SHA256 / 600k (standard). The whole
+  Bitwarden→CLI chain works; `export TWS_PASSWORD=$(bw get password "ib-gateway-live")`
+  is ready to use in `start.gateway.live.sh`.
+  - Helper: `scripts/test-bw-roundtrip.sh` reads the master password via `--passwordenv`
+    to avoid the interactive double-prompt that otherwise surfaces a typo as a misleading
+    `decryption operation failed` error. Run `./scripts/test-bw-roundtrip.sh [reveal]`.
 
 ## 5. Findings / notes
 - **bitwarden.env:**
