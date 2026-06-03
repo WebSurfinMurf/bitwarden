@@ -14,20 +14,16 @@ updated Task 1 in `admin-cli-integration.md`); the upgrade below ran through tha
 - How it was deployed: GitLab pipeline `administrators/bitwarden` (project id 52) →
   `deploy` job ran `./deploy.sh` (compose pull/down/up) → `test` job health-checked. Green.
 
-## 2. Admin user account
-- **Existing users in the vault: 1 — `websurfinmurf@gmail.com`** (created 2025-10-02,
-  emailVerified: true, enabled, no orgs, no 2FA). This is the developer-side identity.
-- **There is NO `administrator@ai-servicers.com` account.** An admin-owned account does
-  not yet exist.
-- `SIGNUPS_ALLOWED` final state: **on (true)** — left enabled so you can self-register.
+## 2. Admin user account  — DONE
+- **Users in the vault: 2** — `websurfinmurf@gmail.com` (developer-side, pre-existing) and
+  **`administrator@ai-servicers.com`** (self-registered by the admin; verified, enabled).
+- `SIGNUPS_ALLOWED` final state: **off (false)** — closed after the admin account was
+  registered. Verified: container env `SIGNUPS_ALLOWED=false` and the register endpoint now
+  returns `400 "Registration not allowed"`. Change was made in `bitwarden.env`
+  (backup at `bitwarden.env.bak.20260602`) and deployed via the pipeline.
 - **SMTP is entirely unconfigured** (`SMTP_HOST`/`SMTP_FROM`/etc. all unset). Emailed
-  *invites* therefore will NOT work — self-registration is the only viable path, which is
-  fine because signups are open.
-- **Action needed from you:**
-  1. Go to https://bitwarden.ai-servicers.com → **Create account** → register
-     `administrator@ai-servicers.com` and set your master password (yours to choose; I did
-     not and cannot set it).
-  2. Tell me when done, and I'll help you turn signups **off** (security — see §5).
+  *invites* won't work — self-registration was used. To onboard developers later either
+  briefly reopen signups or configure SMTP (see §5).
 
 ## 2b. Organization / developers-group readiness
 - Organizations enabled: **yes** — Vaultwarden 1.36.0 supports orgs.
@@ -39,7 +35,7 @@ updated Task 1 in `admin-cli-integration.md`); the upgrade below ran through tha
   (per your instructions).
 - Intended structure (for you to create after first login, as the doc specifies):
   - Org **`ai-servicers`**.
-  - Collection **`admin-infra`** — admin-only (live IB creds, infra secrets).
+  - Collection **`administrators`** — admin-only (live IB creds, infra secrets).
   - Collection **`developers`** — paper IB creds / dev tooling; invite developers here only.
 
 ## 3. CLI install
@@ -65,10 +61,8 @@ updated Task 1 in `admin-cli-integration.md`); the upgrade below ran through tha
   end-to-end step for you to run after registering (see "What to test").
 
 ## 5. Findings / notes
-- **bitwarden.env — recommended additions (NOT changed by me):**
-  - After you register, set `SIGNUPS_ALLOWED=false` to stop the public from registering on
-    a publicly-exposed vault. It is currently `true` and the vault is internet-facing via
-    Traefik — anyone can create an account right now. Close it once your admin account exists.
+- **bitwarden.env:**
+  - `SIGNUPS_ALLOWED` set to **false** (done — see §2). Backup: `bitwarden.env.bak.20260602`.
   - `SMTP_*` is unset. If you ever want invites (e.g. to onboard the `developers` group
     without self-registration) you'll need `SMTP_HOST`, `SMTP_FROM`, `SMTP_PORT`,
     `SMTP_SECURITY`, `SMTP_USERNAME`, `SMTP_PASSWORD`. Not required for the self-register flow.
@@ -98,9 +92,9 @@ updated Task 1 in `admin-cli-integration.md`); the upgrade below ran through tha
    https://bitwarden.ai-servicers.com no longer offers "Create account".
 
 3. **Create the org + collections** (web vault, logged in as administrator):
-   org `ai-servicers`; collections `admin-infra` and `developers`.
+   org `ai-servicers`; collections `administrators` and `developers`.
 
-4. **Create the first item:** under `admin-infra`, add a login item named
+4. **Create the first item:** under `administrators`, add a login item named
    `ib-gateway-live` with the live IB username/password.
 
 5. **CLI round-trip from this host** (the whole point):

@@ -68,8 +68,8 @@ Look ahead: the developer side of the house (websurfinmurf and anyone else in th
 Preferred structure inside Vaultwarden:
 
 - **Organization**: `ai-servicers` (single org for the household; Vaultwarden organizations are how you share items across users).
-- **Collections within the org**:
-  - `admin-infra` — admin-only items (live IB creds, root passwords, infra secrets). Only the administrator user has access.
+- **Collections within the org** (named 1:1 after the Linux groups they map to):
+  - `administrators` — admin-only items (live IB creds, root passwords, infra secrets). Only the administrator user has access. (Maps to the `administrators` Linux group, gid 2000.)
   - `developers` — developer-side items (paper IB creds, dev tooling). Members of the `developers` Linux group get invited as Bitwarden members with access to this collection only.
 - The administrator's **personal vault** (not in the org) can also hold admin-only items — either approach is fine. The collection split inside the org is what actually enforces dev/admin separation.
 
@@ -161,6 +161,6 @@ Write your findings to `~/projects/bitwarden/docs/admin-cli-integration.response
 - Anything you couldn't do and why
 ```
 
-Once I have that file, I'll: (a) self-register or accept the invite, (b) set my master password, (c) create the `ai-servicers` org + `admin-infra` and `developers` collections per the structure in task 2b, (d) create the first vault item (`ib-gateway-live` username/password) under `admin-infra`, (e) verify `bw login && bw unlock && bw get password "ib-gateway-live"` works end-to-end from this host, then (f) write the `start.gateway.live.sh` that uses it.
+Once I have that file, I'll: (a) self-register or accept the invite, (b) set my master password, (c) create the `ai-servicers` org + `administrators` and `developers` collections per the structure in task 2b, (d) create the first vault item (`ib-gateway-live` username/password) under `administrators`, (e) verify `bw login && bw unlock && bw get password "ib-gateway-live"` works end-to-end from this host, then (f) write the `start.gateway.live.sh` that uses it.
 
 A follow-up doc will cover **the mirror for the developers group**: getting websurfinmurf (and any other `developers`-group user) onto Bitwarden, scoped to the `developers` collection only, so they can do the same Bitwarden-→-CLI pattern for paper trading creds in their own image build. That doc isn't your responsibility — but the structure you set up here (org + two collections) is what makes it possible without later rework.
