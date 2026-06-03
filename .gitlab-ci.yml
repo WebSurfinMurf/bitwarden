@@ -5,14 +5,11 @@
 # into GitLab; that push then triggers `deploy`. Nobody runs `docker compose`
 # by hand — pushing to GitHub (and the weekly sync) is what ships changes.
 #
-# The shell runner (tags: shell/linuxserver/administrator) runs as root, but the
-# git + docker + secrets all live with the `administrator` user (HOME, SSH keys,
-# docker group, secrets file). Root has no passwordless SSH to administrator, so
-# jobs drop privileges with `sudo -u administrator -H bash -lc '...'` (root sudoes
-# without a password; -H sets HOME=/home/administrator so deploy.sh resolves
-# $HOME/projects/secrets/bitwarden.env and the docker compose env_file correctly).
-# GIT_STRATEGY is none because jobs operate on the host clone / scratch clone, not
-# on a runner-side checkout.
+# Runtime: the `linuxserver-administrator` runner is the gitlab-runner-admin
+# container — root, with the host docker socket and /home/administrator both
+# bind-mounted. So deploy/test check out the GitLab mirror (job token, no SSH)
+# and drive the host docker daemon directly; only `sync` needs SSH, and it
+# passes administrator's keys by absolute path (HOME isn't honored in-container).
 
 stages:
   - sync
@@ -20,9 +17,8 @@ stages:
   - test
 
 variables:
-  GIT_STRATEGY: none
-  RUN_AS_ADMIN: "sudo -u administrator -H bash -lc"
-  PROJECT_DIR: /home/administrator/projects/bitwarden
+  ADMIN_HOME: /home/administrator
+  SECRETS_FILE: /home/administrator/projects/secrets/bitwarden.env
 
 # Weekly poll: pull GitHub -> push GitLab (poor-man's pull mirror).
 # Runs ONLY in the scheduled pipeline (Sunday 05:00 America/New_York).
@@ -32,7 +28,7 @@ sync:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
   script:
-    - $RUN_AS_ADMIN "$PROJECT_DIR/scripts/mirror-from-github.sh"
+    - ./scripts/mirror-from-github.sh
 
 # Deploy on any push to main (including the push that `sync` produces) and on
 # manual web/API runs (used to deploy on demand).
@@ -44,7 +40,11 @@ deploy:
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "api"'
   script:
-    - $RUN_AS_ADMIN "cd $PROJECT_DIR && git pull origin main && ./deploy.sh"
+    # HOME so deploy.sh + compose env_file resolve $HOME/projects/secrets/...,
+    # and source the secrets so compose interpolation (ADMIN_TOKEN, DOMAIN) is set.
+    - export HOME="$ADMIN_HOME"
+    - set -a; . "$SECRETS_FILE"; set +a
+    - ./deploy.sh
   environment:
     name: production
     url: https://bitwarden.ai-servicers.com
@@ -53,11 +53,11 @@ deploy:
 test:
   stage: test
   tags: [shell, linuxserver, administrator]
+  needs: [deploy]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "api"'
   script:
     - sleep 8  # let the recreated container settle
-    - $RUN_AS_ADMIN "$PROJECT_DIR/scripts/healthcheck.sh"
-  needs: [deploy]
+    - ./scripts/healthcheck.sh
