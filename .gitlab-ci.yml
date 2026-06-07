@@ -1,37 +1,24 @@
 # GitLab-centric deploy for bitwarden (Vaultwarden).
 #
-# Source of truth is GitHub. GitLab Community Edition cannot pull-mirror
-# (Premium-only), so a weekly *scheduled* `sync` job re-checks GitHub's `main`
-# into GitLab; that push then triggers `deploy`. Nobody runs `docker compose`
-# by hand — pushing to GitHub (and the weekly sync) is what ships changes.
+# Source of truth is GitLab. Pushes to main trigger deploy + test.
+# After a successful deploy, the mirror stage pushes to GitHub as a backup.
 #
 # Runtime: the `linuxserver-administrator` runner is the gitlab-runner-admin
 # container — root, with the host docker socket and /home/administrator both
 # bind-mounted. So deploy/test check out the GitLab mirror (job token, no SSH)
-# and drive the host docker daemon directly; only `sync` needs SSH, and it
-# passes administrator's keys by absolute path (HOME isn't honored in-container).
+# and drive the host docker daemon directly; only `mirror` needs SSH to push
+# administrator's keys to GitHub by absolute path.
 
 stages:
-  - sync
   - deploy
   - test
+  - mirror
 
 variables:
   ADMIN_HOME: /home/administrator
   SECRETS_FILE: /home/administrator/projects/secrets/bitwarden.env
 
-# Weekly poll: pull GitHub -> push GitLab (poor-man's pull mirror).
-# Runs ONLY in the scheduled pipeline (Sunday 05:00 America/New_York).
-sync:
-  stage: sync
-  tags: [shell, linuxserver, administrator]
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-  script:
-    - ./scripts/mirror-from-github.sh
-
-# Deploy on any push to main (including the push that `sync` produces) and on
-# manual web/API runs (used to deploy on demand).
+# Deploy on any push to main and on manual web/API runs.
 deploy:
   stage: deploy
   tags: [shell, linuxserver, administrator]
@@ -40,8 +27,6 @@ deploy:
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "api"'
   script:
-    # HOME so deploy.sh + compose env_file resolve $HOME/projects/secrets/...,
-    # and source the secrets so compose interpolation (ADMIN_TOKEN, DOMAIN) is set.
     - export HOME="$ADMIN_HOME"
     - set -a; . "$SECRETS_FILE"; set +a
     - ./deploy.sh
@@ -61,3 +46,16 @@ test:
   script:
     - sleep 8  # let the recreated container settle
     - ./scripts/healthcheck.sh
+
+# Push mirror: GitLab -> GitHub (backup). Runs after successful deploy+test.
+mirror:
+  stage: mirror
+  tags: [shell, linuxserver, administrator]
+  needs: [test]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "api"'
+  script:
+    - ./scripts/mirror-to-github.sh
+  allow_failure: true  # mirror failure shouldn't block deploys

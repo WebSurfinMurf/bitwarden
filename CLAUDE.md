@@ -34,17 +34,18 @@ Auto-discovered by Promtail → Loki → Grafana
 
 Deploys go through the GitLab pipeline (`.gitlab-ci.yml`), not manual compose.
 
-- **Source of truth: GitHub** (`github.com:WebSurfinMurf/bitwarden`). GitLab CE has
-  no pull mirroring, so a **weekly scheduled pipeline** (Sun 05:00 ET) runs
-  `scripts/mirror-from-github.sh` to re-check GitHub's `main` into GitLab
-  (`administrators/bitwarden`, project id 52); that push triggers `deploy` → `test`.
+- **Source of truth: GitLab** (`administrators/bitwarden`, project id 52).
+  Push to `main` triggers `deploy` → `test` → `mirror` (backup push to GitHub).
+- **GitHub backup:** After successful deploy+test, `scripts/mirror-to-github.sh`
+  pushes main + tags to `github.com:WebSurfinMurf/bitwarden` as a backup mirror.
+  Mirror failure is `allow_failure: true` — it won't block deploys.
 - **Deploy now / on demand:** trigger a pipeline on `main` —
   `glab ci run -R administrators/bitwarden -b main` (or GitLab UI "Run pipeline").
 - **Runtime:** the `linuxserver-administrator` runner is the `gitlab-runner-admin`
   container (root, host docker.sock + `/home/administrator` mounted). `deploy`
-  checks out the GitLab mirror (job token), sources the secrets file, and runs
+  checks out GitLab (job token), sources the secrets file, and runs
   `./deploy.sh` against the host docker daemon; `test` runs `scripts/healthcheck.sh`.
-- The host clone has two remotes: `origin` (GitHub) and `gitlab` (push target).
+- The host clone has two remotes: `origin` (GitLab) and `github` (backup).
 
 ## Common Commands
 ```bash
@@ -61,4 +62,4 @@ docker logs bitwarden --tail 50
 ```
 
 ---
-*See directives.md for standards | Last Updated: 2026-06-02*
+*See directives.md for standards | Last Updated: 2026-06-07*
