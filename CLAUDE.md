@@ -61,5 +61,32 @@ docker logs bitwarden --tail 50
 #   ./deploy.sh
 ```
 
+## Service Accounts (machine identities)
+
+No Secrets Manager here — a machine identity is an ordinary Vaultwarden user scoped to one
+collection. Pattern: **one collection + one account per app/environment.**
+
+| Account | Collection | Role / permission |
+|---------|------------|-------------------|
+| `fireflyiii-model@ai-servicers.com` | `fireflyiii-model-server` | User / Can view |
+
+Non-interactive read:
+```bash
+eval "$(./scripts/bw-service-session.sh $HOME/projects/secrets/fireflyiii-model-bw.env)"
+bw get password "firefly_iii_access_token"
+```
+
+Gotchas:
+- Every identity MUST set its own `BITWARDENCLI_APPDATA_DIR`. The default
+  `~/.config/Bitwarden CLI` belongs to `administrator` (IB gateway flow) — sharing it
+  clobbers that login.
+- Creating an account needs a **signup window**, not an invite. SMTP is unconfigured, and an
+  admin-panel invite creates a user row that makes the web vault show *login* instead of
+  *register* (empty password hash → "Invalid master password"). Correct sequence: delete any
+  stale row, set `SIGNUPS_ALLOWED=true` + `SIGNUPS_DOMAINS_WHITELIST=ai-servicers.com`,
+  deploy, register at `/#/signup`, then set `SIGNUPS_ALLOWED=false` and deploy again.
+- Admin API is rate-limited to ~3 auth attempts per 5 minutes.
+- Collection nesting is display-only — access is never inherited from a parent collection.
+
 ---
-*See directives.md for standards | Last Updated: 2026-06-07*
+*See directives.md for standards | Last Updated: 2026-07-25*
